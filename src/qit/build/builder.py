@@ -524,6 +524,26 @@ class CppBuilder(object):
 
         function_name = self.get_autoname(function, "function")
         self.writer.class_begin(function_name)
+
+        if function.variables and function.is_external():
+            self.writer.line("struct Env {{")
+            self.writer.indent_push()
+            self.writer.line("Env({}) : {} {{}}",
+                             ",".join("const {} &{}".format(v.type.get_element_type(self),
+                                                      v.name)
+                                      for v in function.variables),
+                             ",".join("{0}({0})".format(v.name)
+                                      for v in function.variables)
+                             )
+
+            for variable in function.variables:
+                self.writer.line("const {} &{};",
+                             variable.type.get_element_type(self),
+                             variable.name)
+
+            self.writer.indent_pop()
+            self.writer.line("}};")
+
         self.writer.line("public:")
 
         if function.variables:
@@ -547,7 +567,7 @@ class CppBuilder(object):
         for variable in function.variables:
             self.writer.line("const {} &{};",
                              variable.type.get_element_type(self),
-                             variable.name);
+                             variable.name)
 
         self.writer.class_end()
 
@@ -562,25 +582,34 @@ class CppBuilder(object):
         self.writer.text(function.inline_code)
 
     def write_function_external_call(self, function):
+        if function.variables:
+            self.writer.line("Env env({0});", ",".join([var.name for var in function.variables]))
+
         call = ""
 
         if function.return_type is not None:
             call += "return "
 
-        call += function.name + "("
+        call += function.name
+
+        if function.variables:
+            call += "<Env>(env, "
+        else:
+            call += "("
+
         call += ", ".join([param[1] for param in function.params])  # param names
 
         self.writer.line(call + ");")
 
     def get_function_declaration(self, function):
-        declaration = ""
+        declaration = "template <typename Env>\n"
 
         if function.return_type is not None:
             declaration += function.return_type.get_element_type(self) + " "
         else:
             declaration += "void "
 
-        declaration += function.name + "("
+        declaration += function.name + "(Env env, "
         declaration += ", ".join([ "const {} &{}".format(c.get_element_type(self), name)
                    for c, name in function.params ])  # param names
         return declaration + ")"
