@@ -21,6 +21,9 @@ class CppBuilder(object):
         self.autonames[obj] = name
         return name
 
+    def get_report_file_name(self):
+        return "report_file"
+
     def include_filename(self, filename):
         if filename in self.included_filenames:
             return
@@ -38,6 +41,8 @@ class CppBuilder(object):
         self.writer.line(
              "{}(output, {});", write_function.build(self), obj.build(self))
         self.writer.line("fclose(output);")
+        self.report_call("hey", "arg")
+        self.writer.line("fclose({});".format(self.get_report_file_name()))
         self.main_end()
 
     def write_expression_into_variable(self, expr):
@@ -75,8 +80,9 @@ class CppBuilder(object):
         return element
 
     def init_fifo(self):
-        self.writer.line("assert(argc > 1);")
-        self.writer.line("FILE *output = fopen(argv[1], \"w\");")
+        self.writer.line("assert(argc > 2);")
+        self.writer.line("report_file = fopen(argv[1], \"w\");")
+        self.writer.line("FILE *output = fopen(argv[2], \"w\");")
 
     def init_variables(self, args):
         for variable, value in sorted(args.items(), key=lambda v: v[0].name):
@@ -103,16 +109,18 @@ class CppBuilder(object):
         self.writer.line("std::default_random_engine QIT_GENERATOR(time(nullptr));")
         self.writer.line("typedef int32_t qint;")
         self.writer.emptyline()
+        self.writer.line("FILE *{};".format(self.get_report_file_name()))
+        self.report_function_body()
+        self.writer.emptyline()
         self.writer.emptyline()
 
     def main_begin(self):
         self.writer.line("int main(int argc, char **argv)")
         self.writer.block_begin()
-        self.writer.line("srand(time(NULL));")
 
     def main_end(self):
         self.writer.line("return 0;")
-        self.writer.block_end();
+        self.writer.block_end()
 
     def new_id(self, prefix="v"):
         self.id_counter += 1
@@ -126,6 +134,20 @@ class CppBuilder(object):
         self.declaration_keys.append(key)
         self.writer.line("/* Declaration: {} */", key)
         return False
+
+    # Report
+    def report_function_body(self):
+        report_file = self.get_report_file_name()
+
+        self.writer.line("void qit_report(std::string tag, std::string arg = \"\")")
+        self.writer.line("{{")
+        self.writer.indent_push()
+        self.writer.line("fprintf({}, \"%s %s\\n\", tag.c_str(), arg.c_str());".format(report_file))
+        self.writer.indent_pop()
+        self.writer.line("}}")
+
+    def report_call(self, tag, arg=""):
+        self.writer.line("qit_report(\"{}\", \"{}\");".format(str(tag), str(arg)))
 
     # Struct
 

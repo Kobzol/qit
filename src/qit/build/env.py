@@ -1,4 +1,3 @@
-
 from qit.build.builder import CppBuilder
 from qit.base.utils import makedir_if_not_exists
 from qit.base.exception import MissingFiles, ProgramCrashed
@@ -8,6 +7,7 @@ import os
 import subprocess
 import logging
 
+from qit.build.report import ReportHandler
 
 LOG = logging.getLogger("qit")
 
@@ -51,32 +51,38 @@ class CppEnv(object):
         exe_filename = filename[:-4]
         args = (self.compiler, "-o", exe_filename, filename) + self.cpp_flags
         subprocess.check_call(args)
-        if type:
-            fifo_name = exe_filename + "-fifo"
-        else:
-            fifo_name = None
-        return self.run_program(exe_filename, fifo_name, type)
+        output_fifo = exe_filename + "-output"
+        report_fifo = exe_filename + "-report"
 
-    def run_program(self, exe_filename, fifo_name, type):
-        if fifo_name:
-            os.mkfifo(fifo_name)
-            try:
-                args = (exe_filename, fifo_name,)
-                logging.debug("Running: %s", args)
-                popen = subprocess.Popen(
-                        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                with open(fifo_name, "rb") as f:
-                    result = type.read(f)
-                stdout, stderr = popen.communicate()
-                if popen.returncode != 0:
-                    raise ProgramCrashed(stdout, stderr)
-                return result
-            finally:
-                os.unlink(fifo_name)
-        else:
-            args = (exe_filename,)
+        return self.run_program(exe_filename, report_fifo, output_fifo, type)
+
+    def run_program(self, exe_filename, report_fifo, output_fifo, type):
+        report_handler = ReportHandler(report_fifo)
+
+        try:
+            os.mkfifo(report_fifo)
+            os.mkfifo(output_fifo)
+
+            args = (exe_filename, report_fifo, output_fifo)
             logging.debug("Running: %s", args)
-            subprocess.check_call(args)
+
+            report_handler.start()
+            report_handler.subscribe(lambda tag, args: print((tag, args)))
+
+            popen = subprocess.Popen(
+                    args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            with open(output_fifo, "rb") as f:
+                result = type.read(f)
+
+            stdout, stderr = popen.communicate()
+            if popen.returncode != 0:
+                raise ProgramCrashed(stdout, stderr)
+            return result
+        finally:
+            os.unlink(report_fifo)
+            os.unlink(output_fifo)
+            report_handler.stop()
 
     def declarations(self, obj):
         builder = CppBuilder(self)
