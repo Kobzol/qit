@@ -41,7 +41,6 @@ class CppBuilder(object):
         self.writer.line(
              "{}(output, {});", write_function.build(self), obj.build(self))
         self.writer.line("fclose(output);")
-        self.report_call("hey", "arg")
         self.writer.line("fclose({});".format(self.get_report_file_name()))
         self.main_end()
 
@@ -143,6 +142,7 @@ class CppBuilder(object):
         self.writer.line("{{")
         self.writer.indent_push()
         self.writer.line("fprintf({}, \"%s %s\\n\", tag.c_str(), arg.c_str());".format(report_file))
+        self.writer.line("fflush({});".format(report_file))
         self.writer.indent_pop()
         self.writer.line("}}")
 

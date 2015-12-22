@@ -84,9 +84,9 @@ class SortTransformation(Transformation):
                 std::sort(iter.v1.begin(), iter.v1.end());
             }
         """, vector=iterator.to_vector())
-        self.next_fn.code("iter.v0++;");
-        self.is_valid_fn.code("return iter.v0 < iter.v1.size();");
-        self.value_fn.code("return iter.v1[iter.v0];");
+        self.next_fn.code("iter.v0++;")
+        self.is_valid_fn.code("return iter.v0 < iter.v1.size();")
+        self.value_fn.code("return iter.v1[iter.v0];")
 
 
 class FilterTransformation(Transformation):
@@ -129,3 +129,39 @@ class FilterTransformation(Transformation):
             value_fn=iterator.value_fn,
             function=function)
 
+
+class ShowTransformation(Transformation):
+
+    def __init__(self, iterator, progress):
+        progress = Int().value(progress)
+        itype = Struct(Int(), iterator.itype)
+        super().__init__(itype, iterator.element_type)
+
+        self.reset_fn.code("""
+            qit_report(\"RESET {{progress}}\");
+            iter.v0 = 0;
+            {{reset_fn}}(iter.v1);
+        """, reset_fn=iterator.reset_fn, progress=progress)
+
+        self.next_fn.code("""
+            iter.v0++;
+
+            qit_report(\"NEXT {{progress}}\");
+
+            if (iter.v0 % {{progress}} == 0)
+            {
+                qit_report(\"PROGRESS_UPDATE {{progress}}\");
+            }
+
+            {{next_fn}}(iter.v1);
+        """, next_fn=iterator.next_fn, itype=itype, progress=progress)
+
+        self.is_valid_fn.code("""
+            qit_report(\"PROGRESS_PUSH {{progress}}\");
+            bool valid = {{is_valid_fn}}(iter.v1);
+            qit_report(\"PROGRESS_POP {{progress}}\");
+            return valid;
+        """, is_valid_fn=iterator.is_valid_fn, progress=progress)
+
+        self.value_fn.code("return {{value_fn}}(iter.v1);",
+                value_fn=iterator.value_fn)

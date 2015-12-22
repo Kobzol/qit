@@ -1,3 +1,5 @@
+import sys
+
 from qit.build.builder import CppBuilder
 from qit.base.utils import makedir_if_not_exists
 from qit.base.exception import MissingFiles, ProgramCrashed
@@ -11,7 +13,6 @@ from qit.build.report import ReportHandler
 
 LOG = logging.getLogger("qit")
 
-
 class CppEnv(object):
 
     def __init__(self, qit):
@@ -21,6 +22,14 @@ class CppEnv(object):
         self.cpp_flags = ("-O3",
                           "-std=c++11",
                           "-march=native")
+        self.report_callbacks = []
+
+    def _handle_callback(self, tag, args):
+        print((tag, args))
+        sys.stdout.flush()
+        for cb in self.report_callbacks:
+            if cb[0] == tag:
+                cb[1](tag, args)
 
     def run_collect(self, obj, args):
         self.check_all(obj)
@@ -67,7 +76,7 @@ class CppEnv(object):
             logging.debug("Running: %s", args)
 
             report_handler.start()
-            report_handler.subscribe(lambda tag, args: print((tag, args)))
+            report_handler.subscribe(lambda tag, args: self._handle_callback(tag, args))
 
             popen = subprocess.Popen(
                     args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -111,6 +120,9 @@ class CppEnv(object):
             if not os.path.isfile(filename):
                 result[filename] = functions
         return result
+
+    def set_report_callback(self, tag, callback):
+        self.report_callbacks.append((tag, callback))
 
     def check_all(self, iterator):
         self.check_functions(iterator)

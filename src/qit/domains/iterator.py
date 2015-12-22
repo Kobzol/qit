@@ -40,6 +40,9 @@ class Iterator(QitObject):
     def filter(self, function):
         return FilterTransformation(self, function)
 
+    def show(self, progress):
+        return ShowTransformation(self, progress)
+
     # To single value
 
     def reduce(self, function):
@@ -177,6 +180,6 @@ class Iterator(QitObject):
 
 
 # To broke import cycle, we import following packages at the end
-from qit.domains.transformation import TakeTransformation, FilterTransformation
+from qit.domains.transformation import TakeTransformation, FilterTransformation, ShowTransformation
 from qit.domains.transformation import MapTransformation
 from qit.domains.transformation import SortTransformation

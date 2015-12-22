@@ -39,16 +39,18 @@ class ReportHandler(object):
 
     def stop(self):
         self.stop_event.set()
-        self.callbacks.clear()
         self.read_thread.join()
+        self.callbacks.clear()
 
     def read_fifo(self, fifo):
         with open(fifo, "r", buffering=1) as file:  # line buffered
             while not self.stop_event.is_set():
-                if len(select.select([file], [], [], 0.1)[0]) != 0:
+                while len(select.select([file], [], [], 0.01)[0]) != 0:
                     msg = file.readline().strip().split(" ")
                     tag = msg[0]
                     args = msg[1:]
 
                     if tag:
                         self._on_message_received(tag, args)
+                    else:
+                        break

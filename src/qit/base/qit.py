@@ -43,6 +43,9 @@ class Qit:
         return self.env.run_collect(obj,
                                     assign_values(variables, args))
 
+    def set_report_callback(self, tag, callback):
+        self.env.set_report_callback(tag, callback)
+
     def declarations(self, obj):
         check_qit_object(obj)
         return self.env.declarations(obj)
