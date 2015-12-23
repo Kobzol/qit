@@ -21,6 +21,7 @@ class Qit:
         self.build_dir = build_dir
         self.auto_create_files = create_files
         self.env = CppEnv(self)
+        self.env.set_report_callback(ReportEvent.Error, lambda tag, args: print("Qit runtime error: " + str(args)))
 
         log_level = None
         if verbose == 1:
@@ -46,9 +47,6 @@ class Qit:
                                     assign_values(variables, args))
 
     def set_report_callback(self, tag, callback):
-        if isinstance(tag, ReportEvent):
-            tag = tag.value
-
         self.env.set_report_callback(tag, callback)
 
     def declarations(self, obj):

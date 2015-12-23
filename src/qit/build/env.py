@@ -9,9 +9,10 @@ import os
 import subprocess
 import logging
 
-from qit.build.report import ReportHandler
+from qit.build.report import ReportHandler, ReportEvent
 
 LOG = logging.getLogger("qit")
+
 
 class CppEnv(object):
 
@@ -25,8 +26,6 @@ class CppEnv(object):
         self.report_callbacks = []
 
     def _handle_callback(self, tag, args):
-        print((tag, args))
-        sys.stdout.flush()
         for cb in self.report_callbacks:
             if cb[0] == tag:
                 cb[1](tag, args)
@@ -122,6 +121,9 @@ class CppEnv(object):
         return result
 
     def set_report_callback(self, tag, callback):
+        if isinstance(tag, ReportEvent):
+            tag = tag.value
+
         self.report_callbacks.append((tag, callback))
 
     def check_all(self, iterator):
