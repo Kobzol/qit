@@ -17,6 +17,10 @@ class Domain(QitObject):
             self.size = Int().value(size)
         else:
             self.size = None
+
+        if iterator and self.size:
+            iterator.size = self.size
+
         self.indexer = indexer
 
     def variable(self, name):

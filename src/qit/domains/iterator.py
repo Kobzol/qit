@@ -14,6 +14,7 @@ class Iterator(QitObject):
         self.next_fn = Function().takes(itype, "iter", const=False)
         self.is_valid_fn = Function().takes(itype, "iter").returns(Bool())
         self.value_fn = Function().takes(itype, "iter").returns(element_type)
+        self.size = None
 
     @property
     def childs(self):
