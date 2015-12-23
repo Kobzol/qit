@@ -1,6 +1,5 @@
 import threading
 
-import select
 from enum import Enum
 
 
@@ -22,7 +21,6 @@ class ReportEvent(Enum):
 class ReportHandler(object):
     def __init__(self, fifo):
         self.fifo = fifo
-        self.stop_event = threading.Event()
         self.callbacks = []
         self.read_thread = None
 
@@ -38,19 +36,19 @@ class ReportHandler(object):
         self.read_thread.start()
 
     def stop(self):
-        self.stop_event.set()
         self.read_thread.join()
         self.callbacks.clear()
 
     def read_fifo(self, fifo):
         with open(fifo, "r", buffering=1) as file:  # line buffered
-            while not self.stop_event.is_set():
-                while len(select.select([file], [], [], 0.01)[0]) != 0:
-                    msg = file.readline().strip().split(" ")
-                    tag = msg[0]
-                    args = msg[1:]
+            while True:
+                msg = file.readline()
 
-                    if tag:
-                        self._on_message_received(tag, args)
-                    else:
-                        break
+                if not msg:
+                    break
+
+                msg = msg.strip().split(" ")
+                tag = msg[0]
+                args = msg[1:]
+
+                self._on_message_received(tag, args)
