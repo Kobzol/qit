@@ -4,6 +4,8 @@ from qit.base.qitobject import check_qit_object
 
 import logging
 
+from qit.build.report import ReportEvent
+
 LOG = logging.getLogger("qit")
 
 class Qit:
@@ -44,6 +46,9 @@ class Qit:
                                     assign_values(variables, args))
 
     def set_report_callback(self, tag, callback):
+        if isinstance(tag, ReportEvent):
+            tag = tag.value
+
         self.env.set_report_callback(tag, callback)
 
     def declarations(self, obj):
